@@ -1,3 +1,12 @@
+# Core dependencies
+pyyaml>=6.0
+python-dotenv>=1.0.0
+
+# Testing dependencies
+pytest>=7.0.0
+pytest-cov>=4.0.0
+
+# Original LeanAgent dependencies
 pytorch-lightning[extra]
 numpy
 deepspeed
@@ -11,6 +20,5 @@ torch
 tqdm
 transformers
 openai
-python-dotenv
 rank_bm25
 torchmetrics

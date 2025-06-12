@@ -1,0 +1,41 @@
+[build-system]
+requires = ["setuptools>=42", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "leanagent"
+version = "0.1.0"
+description = "LeanAgent - Lifelong Learning for Formal Theorem Proving"
+authors = [
+    {name = "LeanAgent Team"}
+]
+readme = "README.md"
+requires-python = ">=3.9,<3.12"
+dependencies = [
+    "pyyaml>=6.0",
+    "python-dotenv>=1.0.0",
+    "lean-dojo==1.9.0",
+    "numpy",
+    "torch",
+    "transformers",
+    "pytorch-lightning[extra]",
+    "ray",
+    "requests",
+    "tqdm",
+    "loguru",
+    "networkx"
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.0.0",
+    "pytest-cov>=4.0.0",
+]
+
+[project.scripts]
+leanagent = "leanagent.cli:run_main"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = "test_*.py"
+python_functions = "test_*" 
