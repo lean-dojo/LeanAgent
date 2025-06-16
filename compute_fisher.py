@@ -1,7 +1,8 @@
+import os
 from leanagent import *
 from retrieval.fisher_computation_module import FisherComputationModule
 
-new_data_path = "<NEW_DATA_PATH>/<NEW_DATASET_NAME>"
+new_data_path = os.environ.get("NEW_DATA_PATH", "datasets/new_data")
 
 def main():
     """

@@ -5,117 +5,53 @@
 ## Documentation
 Generated docs by Devin are here: [https://deepwiki.com/lean-dojo/LeanAgent]. It includes a detailed explanation + diagrams.
 
-## Requirements
-
-- Supported platforms: Linux and macOS
-- Git >= 2.25
-- 3.9 <= Python < 3.12
-- wget
-- [elan](https://github.com/leanprover/elan)
-- Sufficient disk space for model checkpoints and data
-
 ## Setup
 
-### Step 1: Configure `run_leanagent.sh`
-1. Set the `RAID_DIR` variable to your desired directory path
-2. Install Conda if not already installed
-3. Update the Conda path in the `source` command to match your installation
-4. Create and activate a dedicated environment:
+## Quick Start with Taskfile
+
+### Prerequisites
+1. Install Homebrew (https://brew.sh) if you don't have it.
+2. Install Taskfile ( https://taskfile.dev/#/installation)
+3. Modify the `.env.template` secret file in the repository root to provide GitHub token and rename `.env.template` to `.env`.
+
+To see all the tasks available to run, run 
+```bash
+task
 ```
-conda create -n "LeanAgent" python=3.10
-conda activate LeanAgent
-pip install -r requirements.txt
-```
-5. Create a [GitHub personal access token](https://docs.github.com/en/authentication/keeping-your-account-and-data-secure/managing-your-personal-access-tokens#personal-access-tokens-classic) and set the environment variable `GITHUB_ACCESS_TOKEN` in the script to it
+### Environment and Package Setup
 
-### Step 2: Update File Paths
-1. Modify the `RAID_DIR` variable in `replace_files.sh`
-2. Execute the script:
-```
-bash replace_files.sh
-```
-
-### Step 3: Modify `leanagent.py`
-1. Set the following global variables:
-    - `repo_dir`: Path to your repository
-    - `DATA_DIR`: Directory for storing data
-    - `CHECKPOINT_DIR`: Directory for model checkpoints
-    - `EVAL_RESULTS_FILE_PATH`: Path for evaluation results
-    - `DB_FILE_NAME`: Database filename
-    - `PROOF_LOG_FILE_NAME`: Proof logging filename
-    - `ENCOUNTERED_THEOREMS_FILE`: Path for tracking encountered theorems
-    - (Optional) `FISHER_DIR`: Directory for Fisher Information Matrices (FIMs)
-2. Adjust the options at the beginning of the `main()` function according to your requirements. The default options correspond to the LeanAgent configuration, and alternate options can be used to replicate ablation studies from the paper.
-3. Adjust the Lean toolchain paths in `generate_benchmark_lean4.py` if needed:
-```
-lean_dir2 = f"/.elan/toolchains/leanprover--lean4---{v}"
-lean_dir3 = f"~/.elan/toolchains/leanprover--lean4---{v}"
-```
-These should match your system's Lean installation paths.
-
-### Step 4: Install Models
-1. For ReProver's Tactic Generator:
-```
-pip install gdown
-gdown https://drive.google.com/uc?id=11DXxixg6S4-hUA-u-78geOxEB7J7rCoX
-```
-Move the downloaded file to `{RAID_DIR}/`
-
-2. For ReProver's Starting Retriever:
-
-```
-gdown https://drive.google.com/uc?id=1aRd1jQPu_TX15Ib5htzn3wZqHYowl3ax
-```
-
-Move the downloaded file to:
-
-- `{RAID_DIR}/checkpoints/`
-
-- `{RAID_DIR}/{CHECKPOINT_DIR}/`
-
-3. For the latest LeanAgent checkpoint from the paper:
-```
-gdown https://drive.google.com/uc?id=1plkC7Y5n0OVCJ0Ad6pH8_mwbALKYY_FY
-```
-
-Move the downloaded file to `{RAID_DIR}/checkpoints/`
-
-### Step 5: Run LeanAgent
-1. After completing all configuration steps, execute:
-```
-bash run_leanagent.sh
-```
-
-If you want to use Elastic Weight Consolidation (EWC) for lifelong learning, as shown in our ablation studies, follow these additional steps:
-
-### Step 6: Configure `compute_fisher.py`
-
-1. Create and set the `new_data_path`: Path to new training data
-
-2. Download the starting FIM for mathlib:
-```
-gdown https://drive.google.com/uc?id=1Q8yHq7XTAaHXGCiCGmhwZhTfkhHhN1cP
-```
-Move the downloaded file to your `FISHER_DIR`.
-
-### Step 7: Configure `run_compute_fisher.sh`
-1. Set the `RAID_DIR` variable to your desired directory path
-2. Update the Conda path in the `source` command to match your installation
-3. Add your GitHub personal access token as the environment variable `GITHUB_ACCESS_TOKEN`
-
-To use EWC in the training process, alternate between running `run_leanagent.sh` and `run_compute_fisher.sh`:
-1. Run `bash run_leanagent.sh` for one epoch. Setting `use_fisher = True` in `leanagent.py` does this automatically.
-2. Run `bash run_compute_fisher.sh` to compute the FIM
-3. Run `bash run_leanagent.sh` again for the next epoch
-4. Repeat steps 2-3 as needed
-
-## Running Tests
-
-To run the unit test suite, first activate the conda environment and then use `pytest`:
+Run the following command to install all necessary packages.
 
 ```bash
-conda activate LeanAgent
-python -m pytest tests/
+task setup
+```
+
+### Run LeanAgent
+
+Runs the main LeanAgent script, which orchestrates an end-to-end loop that downloads compatible Lean repositories, searches for unsolved theorems, trains and updates neural components, and attempts automated proof discovery to commit back synthesized proofs.
+```bash
+task run
+```
+
+### Run EWC (Elastic Weight Consolidation) for Lifelong Learning
+Runs an alternating loop of one training epoch (`task run`) followed by Fisher-matrix computation (`task run_fisher`). This reproduces the Elastic Weight Consolidation (EWC) implementation reported in the LeanAgent paper \[[1](https://arxiv.org/abs/2410.06209)\].  
+
+The authors found that EWC (i.e. using the Fisher Information Matrix) resulted in **sub-optimal lifelong-learning performance** compared with the default curriculum/progressive strategy. Therefore **you only need this step if you want to replicate those results**. For normal training, simply run `task run` each epoch and skip the Fisher stage.
+
+```bash
+# one training → Fisher cycle
+task run_ewc
+
+# five train→Fisher cycles 
+task run_ewc -- 5
+```
+
+### Running Tests
+
+To run the unit test suite, use the `task` command after setup is complete:
+
+```bash
+task test
 ```
 
 ## Architecture Overview

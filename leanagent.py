@@ -45,21 +45,19 @@ import torch
 from pytorch_lightning.callbacks import ModelCheckpoint, EarlyStopping, LearningRateMonitor, Callback
 from pytorch_lightning import seed_everything
 
-# Set the seed for reproducibility
 random.seed(3407)  # https://arxiv.org/abs/2109.08203
+
 BATCH_SIZE = 4
 RAID_DIR = os.environ.get('RAID_DIR')
-os.environ['RAY_TMPDIR'] = f"{RAID_DIR}/tmp"
-repo_dir = f"{RAID_DIR}/repos_new"
+DATA_DIR = os.environ.get('DATA_DIR', 'datasets')
+CHECKPOINT_DIR = os.environ.get('CHECKPOINT_DIR', 'checkpoints')
+EVAL_RESULTS_FILE_PATH = os.environ.get('EVAL_RESULTS_FILE_PATH', f"{RAID_DIR}/LeanAgent/eval_results.json")
+DB_FILE_NAME = os.environ.get('DB_FILE_NAME', 'leanagent_db.json')
+PROOF_LOG_FILE_NAME = os.environ.get('PROOF_LOG_FILE_NAME', 'proof_log.json')
+ENCOUNTERED_THEOREMS_FILE = os.environ.get('ENCOUNTERED_THEOREMS_FILE', 'encountered_theorems.txt')
+FISHER_DIR = os.environ.get('FISHER_DIR', 'fisher')  # Optional
 
-DATA_DIR = "<DATA_DIR>"
-CHECKPOINT_DIR = "<CHECKPOINT_DIR>"
-EVAL_RESULTS_FILE_PATH = f"{RAID_DIR}/LeanAgent/<EVAL_RESULTS_FILE_PATH>"
-DB_FILE_NAME = "<DB_FILE_NAME>"
-PROOF_LOG_FILE_NAME = "proof_logs/<PROOF_LOG_FILE_NAME>"
-ENCOUNTERED_THEOREMS_FILE = "<ENCOUNTERED_THEOREMS_FILE>"
-FISHER_DIR = "<FISHER_DIR>"  # Optional
-
+repo_dir = os.environ.get('REPO_DIR', f"{RAID_DIR}/repos_new")
 repos_for_merged_dataset = []
 repos_for_proving = []
 
@@ -949,6 +947,7 @@ def main():
     global repos_for_proving
     global lean_git_repos
     try:
+        #TODO @vishnya: Create a config file for the parameters
         current_epoch = 0
         epochs_per_repo = 1
         run_progressive_training = True

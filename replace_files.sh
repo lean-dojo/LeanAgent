@@ -60,3 +60,5 @@ echo "Replacing $UTILS_PY_PATH"
 cp ${RAID_DIR}/LeanAgent/custom_utils.py $UTILS_PY_PATH
 echo "Contents after replacement:"
 cat $UTILS_PY_PATH
+
+rm -f pl_path.txt ld_path.txt
