@@ -14,8 +14,12 @@ from loguru import logger
 from functools import cache
 from contextlib import contextmanager
 from typing import Tuple, Union, List, Generator, Optional
-
-from .constants import NUM_WORKERS, TMP_DIR, LEAN4_PACKAGES_DIR, LEAN4_BUILD_DIR
+from lean_dojo.constants import (
+    NUM_WORKERS,
+    TMP_DIR,
+    LEAN4_PACKAGES_DIR,
+    LEAN4_BUILD_DIR,
+)
 
 
 @contextmanager

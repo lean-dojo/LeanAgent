@@ -36,22 +36,23 @@ def parse_pos(pos_str):
     else:
         raise ValueError(f"Unexpected format for Pos: {pos_str}")
 
+
 @dataclass
-"""
-Annotation class represents a code annotation with its full name, definition path, 
-and position details.
-Attributes:
-    full_name (str): The full name of the annotation.
-    def_path (str): The file path where the annotation is defined.
-    def_pos (Pos): The starting position of the annotation definition.
-    def_end_pos (Pos): The ending position of the annotation definition.
-Methods:
-    from_dict(data: Dict) -> Annotation:
-        Creates an Annotation instance from a dictionary.
-    to_dict() -> Dict:
-        Converts the Annotation instance to a dictionary.
-"""
 class Annotation:
+    """
+    Annotation class represents a code annotation with its full name, definition path, 
+    and position details.
+    Attributes:
+        full_name (str): The full name of the annotation.
+        def_path (str): The file path where the annotation is defined.
+        def_pos (Pos): The starting position of the annotation definition.
+        def_end_pos (Pos): The ending position of the annotation definition.
+    Methods:
+        from_dict(data: Dict) -> Annotation:
+            Creates an Annotation instance from a dictionary.
+        to_dict() -> Dict:
+            Converts the Annotation instance to a dictionary.
+    """
     full_name: str
     def_path: str
     def_pos: Pos
@@ -77,28 +78,28 @@ class Annotation:
         }
 
 @dataclass
-"""
-AnnotatedTactic is a data class that represents a tactic with its annotations and states before and after its application.
-Attributes:
-    tactic (str): The tactic applied.
-    annotated_tactic (Tuple[str, List[Annotation]]): A tuple containing the tactic and a list of annotations.
-    state_before (str): The state before the tactic is applied.
-    state_after (str): The state after the tactic is applied.
-Methods:
-    from_dict(cls, data: Dict) -> AnnotatedTactic:
-        Creates an AnnotatedTactic instance from a dictionary.
-        Args:
-            data (Dict): A dictionary containing the keys "tactic", "annotated_tactic", "state_before", and "state_after".
-        Returns:
-            AnnotatedTactic: An instance of AnnotatedTactic.
-        Raises:
-            ValueError: If the dictionary does not contain the required keys.
-    to_dict(self) -> Dict:
-        Converts the AnnotatedTactic instance to a dictionary.
-        Returns:
-            Dict: A dictionary representation of the AnnotatedTactic instance.
-"""
 class AnnotatedTactic:
+    """
+    AnnotatedTactic is a data class that represents a tactic with its annotations and states before and after its application.
+    Attributes:
+        tactic (str): The tactic applied.
+        annotated_tactic (Tuple[str, List[Annotation]]): A tuple containing the tactic and a list of annotations.
+        state_before (str): The state before the tactic is applied.
+        state_after (str): The state after the tactic is applied.
+    Methods:
+        from_dict(cls, data: Dict) -> AnnotatedTactic:
+            Creates an AnnotatedTactic instance from a dictionary.
+            Args:
+                data (Dict): A dictionary containing the keys "tactic", "annotated_tactic", "state_before", and "state_after".
+            Returns:
+                AnnotatedTactic: An instance of AnnotatedTactic.
+            Raises:
+                ValueError: If the dictionary does not contain the required keys.
+        to_dict(self) -> Dict:
+            Converts the AnnotatedTactic instance to a dictionary.
+            Returns:
+                Dict: A dictionary representation of the AnnotatedTactic instance.
+    """
     tactic: str
     annotated_tactic: Tuple[str, List[Annotation]]
     state_before: str
@@ -130,25 +131,25 @@ class AnnotatedTactic:
         }
 
 @dataclass
-"""
-A class to represent a theorem with its associated metadata.
-Attributes:
-    full_name (str): The full name of the theorem.
-    file_path (Path): The file path where the theorem is located.
-    start (Pos): The starting position of the theorem in the file.
-    end (Pos): The ending position of the theorem in the file.
-    url (str): The URL associated with the theorem.
-    commit (str): The commit hash associated with the theorem.
-    theorem_statement (str, optional): The statement of the theorem.
-    traced_tactics (Optional[List[AnnotatedTactic]], optional): A list of traced tactics.
-    difficulty_rating (Optional[float], optional): The difficulty rating of the theorem.
-Methods:
-    __eq__(self, other): Checks if two Theorem instances are equal.
-    is_same_theorem(self, other: Theorem) -> bool: Checks if two Theorem instances represent the same theorem.
-    from_dict(cls, data: Dict, url: str, commit: str) -> Theorem: Creates a Theorem instance from a dictionary.
-    to_dict(self) -> Dict: Converts the Theorem instance to a dictionary.
-"""
 class Theorem:
+    """
+    A class to represent a theorem with its associated metadata.
+    Attributes:
+        full_name (str): The full name of the theorem.
+        file_path (Path): The file path where the theorem is located.
+        start (Pos): The starting position of the theorem in the file.
+        end (Pos): The ending position of the theorem in the file.
+        url (str): The URL associated with the theorem.
+        commit (str): The commit hash associated with the theorem.
+        theorem_statement (str, optional): The statement of the theorem.
+        traced_tactics (Optional[List[AnnotatedTactic]], optional): A list of traced tactics.
+        difficulty_rating (Optional[float], optional): The difficulty rating of the theorem.
+    Methods:
+        __eq__(self, other): Checks if two Theorem instances are equal.
+        is_same_theorem(self, other: Theorem) -> bool: Checks if two Theorem instances represent the same theorem.
+        from_dict(cls, data: Dict, url: str, commit: str) -> Theorem: Creates a Theorem instance from a dictionary.
+        to_dict(self) -> Dict: Converts the Theorem instance to a dictionary.
+    """
     full_name: str
     file_path: Path
     start: Pos
@@ -202,29 +203,29 @@ class Theorem:
         }
 
 @dataclass
-"""
-A class representing a Premise with various attributes.
-Attributes:
-    full_name (str): The full name of the premise.
-    code (str): The code associated with the premise.
-    start (Pos): The starting position of the premise.
-    end (Pos): The ending position of the premise.
-    kind (str): The kind or type of the premise.
-Methods:
-    from_dict(cls, data: Dict) -> Premise:
-        Creates an instance of Premise from a dictionary.
-        Args:
-            data (Dict): A dictionary containing the premise data.
-        Returns:
-            Premise: An instance of the Premise class.
-        Raises:
-            ValueError: If the dictionary does not contain the required keys.
-    to_dict(self) -> Dict:
-        Converts the Premise instance to a dictionary.
-        Returns:
-            Dict: A dictionary representation of the Premise instance.
-"""
 class Premise:
+    """
+    A class representing a Premise with various attributes.
+    Attributes:
+        full_name (str): The full name of the premise.
+        code (str): The code associated with the premise.
+        start (Pos): The starting position of the premise.
+        end (Pos): The ending position of the premise.
+        kind (str): The kind or type of the premise.
+    Methods:
+        from_dict(cls, data: Dict) -> Premise:
+            Creates an instance of Premise from a dictionary.
+            Args:
+                data (Dict): A dictionary containing the premise data.
+            Returns:
+                Premise: An instance of the Premise class.
+            Raises:
+                ValueError: If the dictionary does not contain the required keys.
+        to_dict(self) -> Dict:
+            Converts the Premise instance to a dictionary.
+            Returns:
+                Dict: A dictionary representation of the Premise instance.
+    """
     full_name: str
     code: str
     start: Pos
@@ -253,27 +254,27 @@ class Premise:
         }
 
 @dataclass
-"""
-Represents a file containing premises and their associated imports.
-Attributes:
-    path (Path): The file path.
-    imports (List[str]): A list of import statements.
-    premises (List[Premise]): A list of premises.
-Methods:
-    from_dict(cls, data: Dict) -> PremiseFile:
-        Creates an instance of PremiseFile from a dictionary.
-        Args:
-            data (Dict): A dictionary containing the keys "path", "imports", and "premises".
-        Returns:
-            PremiseFile: An instance of PremiseFile.
-        Raises:
-            ValueError: If the dictionary does not contain the required keys.
-    to_dict(self) -> Dict:
-        Converts the PremiseFile instance to a dictionary.
-        Returns:
-            Dict: A dictionary representation of the PremiseFile instance.
-"""
 class PremiseFile:
+    """
+    Represents a file containing premises and their associated imports.
+    Attributes:
+        path (Path): The file path.
+        imports (List[str]): A list of import statements.
+        premises (List[Premise]): A list of premises.
+    Methods:
+        from_dict(cls, data: Dict) -> PremiseFile:
+            Creates an instance of PremiseFile from a dictionary.
+            Args:
+                data (Dict): A dictionary containing the keys "path", "imports", and "premises".
+            Returns:
+                PremiseFile: An instance of PremiseFile.
+            Raises:
+                ValueError: If the dictionary does not contain the required keys.
+        to_dict(self) -> Dict:
+            Converts the PremiseFile instance to a dictionary.
+            Returns:
+                Dict: A dictionary representation of the PremiseFile instance.
+    """
     path: Path
     imports: List[str]
     premises: List[Premise]
@@ -296,42 +297,42 @@ class PremiseFile:
         }
 
 @dataclass
-"""
-Repository class represents a repository with various attributes and methods to manage theorems and premise files.
-Attributes:
-    url (str): URL of the repository.
-    name (str): Name of the repository.
-    commit (str): Commit hash of the repository.
-    lean_version (str): Version of Lean used in the repository.
-    lean_dojo_version (str): Version of Lean Dojo used in the repository.
-    metadata (Dict[str, str]): Metadata associated with the repository.
-    proven_theorems (List[Theorem]): List of proven theorems.
-    sorry_theorems_proved (List[Theorem]): List of sorry theorems that have been proved.
-    sorry_theorems_unproved (List[Theorem]): List of sorry theorems that are unproved.
-    premise_files (List[PremiseFile]): List of premise files.
-    files_traced (List[Path]): List of traced files.
-    pr_url (Optional[str]): URL of the pull request.
-Methods:
-    __eq__(self, other): Checks equality between two Repository instances.
-    __hash__(self): Returns the hash value of the Repository instance.
-    total_theorems(self) -> int: Returns the total number of theorems.
-    num_proven_theorems(self) -> int: Returns the number of proven theorems.
-    num_sorry_theorems_proved(self) -> int: Returns the number of sorry theorems that have been proved.
-    num_sorry_theorems_unproved(self) -> int: Returns the number of sorry theorems that are unproved.
-    num_sorry_theorems(self) -> int: Returns the total number of sorry theorems.
-    num_premise_files(self) -> int: Returns the number of premise files.
-    num_premises(self) -> int: Returns the total number of premises.
-    num_files_traced(self) -> int: Returns the number of traced files.
-    get_all_theorems(self) -> List[Theorem]: Returns a list of all theorems.
-    get_theorem(self, full_name: str, file_path: str) -> Optional[Theorem]: Retrieves a theorem by its full name and file path.
-    update_theorem(self, theorem: Theorem) -> None: Updates an existing theorem.
-    get_premise_file(self, path: str) -> Optional[PremiseFile]: Retrieves a premise file by its path.
-    get_file_traced(self, path: str) -> Optional[Path]: Retrieves a traced file by its path.
-    from_dict(cls, data: Dict) -> Repository: Creates a Repository instance from a dictionary.
-    to_dict(self) -> Dict: Converts the Repository instance to a dictionary.
-    change_sorry_to_proven(self, theorem: Theorem, log_file: str) -> None: Changes a sorry theorem to a proven theorem and logs the change.
-"""
 class Repository:
+    """
+    Repository class represents a repository with various attributes and methods to manage theorems and premise files.
+    Attributes:
+        url (str): URL of the repository.
+        name (str): Name of the repository.
+        commit (str): Commit hash of the repository.
+        lean_version (str): Version of Lean used in the repository.
+        lean_dojo_version (str): Version of Lean Dojo used in the repository.
+        metadata (Dict[str, str]): Metadata associated with the repository.
+        proven_theorems (List[Theorem]): List of proven theorems.
+        sorry_theorems_proved (List[Theorem]): List of sorry theorems that have been proved.
+        sorry_theorems_unproved (List[Theorem]): List of sorry theorems that are unproved.
+        premise_files (List[PremiseFile]): List of premise files.
+        files_traced (List[Path]): List of traced files.
+        pr_url (Optional[str]): URL of the pull request.
+    Methods:
+        __eq__(self, other): Checks equality between two Repository instances.
+        __hash__(self): Returns the hash value of the Repository instance.
+        total_theorems(self) -> int: Returns the total number of theorems.
+        num_proven_theorems(self) -> int: Returns the number of proven theorems.
+        num_sorry_theorems_proved(self) -> int: Returns the number of sorry theorems that have been proved.
+        num_sorry_theorems_unproved(self) -> int: Returns the number of sorry theorems that are unproved.
+        num_sorry_theorems(self) -> int: Returns the total number of sorry theorems.
+        num_premise_files(self) -> int: Returns the number of premise files.
+        num_premises(self) -> int: Returns the total number of premises.
+        num_files_traced(self) -> int: Returns the number of traced files.
+        get_all_theorems(self) -> List[Theorem]: Returns a list of all theorems.
+        get_theorem(self, full_name: str, file_path: str) -> Optional[Theorem]: Retrieves a theorem by its full name and file path.
+        update_theorem(self, theorem: Theorem) -> None: Updates an existing theorem.
+        get_premise_file(self, path: str) -> Optional[PremiseFile]: Retrieves a premise file by its path.
+        get_file_traced(self, path: str) -> Optional[Path]: Retrieves a traced file by its path.
+        from_dict(cls, data: Dict) -> Repository: Creates a Repository instance from a dictionary.
+        to_dict(self) -> Dict: Converts the Repository instance to a dictionary.
+        change_sorry_to_proven(self, theorem: Theorem, log_file: str) -> None: Changes a sorry theorem to a proven theorem and logs the change.
+    """
     url: str
     name: str
     commit: str
@@ -544,36 +545,36 @@ def safe_remove_dir_path(dir_path):
                     raise
 
 @dataclass
-"""
-A class that manages a collection of repositories containing Lean theorem proofs.
-The DynamicDatabase class provides functionality for:
-1. Managing repositories (adding, retrieving, updating, deleting)
-2. Generating merged datasets from multiple repositories
-3. Splitting theorem data for training/validation/testing
-4. Exporting proofs, corpus data, and metadata
-Attributes:
-    repositories: List of Repository objects managed by the database
-Methods:
-    generate_merged_dataset: Creates a merged dataset from multiple repositories
-    _merge_corpus: Merges premise files from multiple repositories
-    _split_data: Splits theorem data using different strategies
-    _split_randomly: Splits theorems randomly into train/val/test sets
-    _split_by_premise: Splits theorems based on premises to ensure premise novelty
-    _export_proofs: Exports theorem proofs in JSON format
-    _export_traced_files: Exports information about traced files
-    _export_metadata: Exports metadata about repositories and statistics
-    add_repository: Adds a new repository to the database
-    get_repository: Retrieves a repository by URL and commit
-    update_repository: Updates an existing repository
-    print_database_contents: Logs the current database contents
-    delete_repository: Removes a repository from the database
-    to_dict: Converts the database to a dictionary representation
-    from_dict: Creates a database instance from a dictionary
-    to_json: Serializes the database to a JSON file
-    from_json: Deserializes a database from a JSON file
-    update_json: Updates an existing JSON file with current database state
-"""
 class DynamicDatabase:
+    """
+    A class that manages a collection of repositories containing Lean theorem proofs.
+    The DynamicDatabase class provides functionality for:
+    1. Managing repositories (adding, retrieving, updating, deleting)
+    2. Generating merged datasets from multiple repositories
+    3. Splitting theorem data for training/validation/testing
+    4. Exporting proofs, corpus data, and metadata
+    Attributes:
+        repositories: List of Repository objects managed by the database
+    Methods:
+        generate_merged_dataset: Creates a merged dataset from multiple repositories
+        _merge_corpus: Merges premise files from multiple repositories
+        _split_data: Splits theorem data using different strategies
+        _split_randomly: Splits theorems randomly into train/val/test sets
+        _split_by_premise: Splits theorems based on premises to ensure premise novelty
+        _export_proofs: Exports theorem proofs in JSON format
+        _export_traced_files: Exports information about traced files
+        _export_metadata: Exports metadata about repositories and statistics
+        add_repository: Adds a new repository to the database
+        get_repository: Retrieves a repository by URL and commit
+        update_repository: Updates an existing repository
+        print_database_contents: Logs the current database contents
+        delete_repository: Removes a repository from the database
+        to_dict: Converts the database to a dictionary representation
+        from_dict: Creates a database instance from a dictionary
+        to_json: Serializes the database to a JSON file
+        from_json: Deserializes a database from a JSON file
+        update_json: Updates an existing JSON file with current database state
+    """
     repositories: List[Repository] = field(default_factory=list)
 
     SPLIT = Dict[str, List[Theorem]]

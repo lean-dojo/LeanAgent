@@ -515,6 +515,7 @@ def main(url, commit, dst_dir):
         logger.info("Unsupported version")
     v = v[1:] # ignore "v" at beginning
     
+    # TODO: So that user doesn't have to set the path manually when needed, we can move this to a config file.
     lean_dir2 = f"/.elan/toolchains/leanprover--lean4---{v}"
     lean_dir3 = f"~/.elan/toolchains/leanprover--lean4---{v}"
     logger.info(f"lean path2 {lean_dir2}")
