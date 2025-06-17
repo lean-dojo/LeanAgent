@@ -1,0 +1,16 @@
+version: "3"
+
+tasks:
+  deps:
+    desc: "Install Python packages and Lean toolchain"
+    cmds:
+      - pip install --upgrade pip
+      - pip install -r requirements.txt
+      - curl -fsSL https://raw.githubusercontent.com/leanprover/elan/master/elan-init.sh | bash -s -- -y
+      - echo "source $HOME/.elan/env" >> ~/.bashrc
+
+  test:
+    desc: "Run PyTest suite"
+    deps: [deps]
+    cmds:
+      - bash -c '. "$HOME/.elan/env" && export PYTHONPATH="$PWD" && pytest -q tests/'
