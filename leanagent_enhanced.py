@@ -9,17 +9,36 @@ from typing import List, Dict, Optional, Any, Tuple
 from dataclasses import dataclass
 from pathlib import Path
 
-import ray
-import torch
-from lean_dojo import (
-    LeanGitRepo, Theorem, Pos, TacticState, 
-    ProofFinished, Status, Dojo, DojoInitError
-)
+try:
+    import ray
+except ImportError:
+    ray = None
+
+try:
+    import torch
+except ImportError:
+    torch = None
+
+try:
+    from lean_dojo import (
+        LeanGitRepo, Theorem, Pos, TacticState, 
+        ProofFinished, Dojo, DojoInitError
+    )
+except ImportError:
+    # For environments without lean_dojo installed
+    LeanGitRepo = Theorem = Pos = TacticState = None
+    ProofFinished = Dojo = DojoInitError = None
+
 from loguru import logger
 
 # Import LeanAgent components
 from prover.proof_search import DistributedProver, BestFirstSearchProver, SearchResult
-from dynamic_database import DynamicDatabase
+from prover.search_tree import Status  # Status is defined here, not in lean_dojo
+
+try:
+    from dynamic_database import DynamicDatabase
+except ImportError:
+    DynamicDatabase = None
 
 # Import enhanced components
 from enhanced_theorem_prover import EnhancedTheoremProver, EnhancedProverConfig, ProverMode

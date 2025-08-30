@@ -7,11 +7,17 @@ from dataclasses import dataclass
 from enum import Enum
 from uuid import uuid4
 
-from lean_dojo import (
-    Theorem, LeanGitRepo, Pos, TacticState, 
-    LeanError, TimeoutError, ProofFinished, 
-    ProofGivenUp, Dojo, DojoInitError
-)
+try:
+    from lean_dojo import (
+        Theorem, LeanGitRepo, Pos, TacticState, 
+        LeanError, TimeoutError, ProofFinished, 
+        ProofGivenUp, Dojo, DojoInitError
+    )
+except ImportError:
+    # For environments without lean_dojo installed
+    Theorem = LeanGitRepo = Pos = TacticState = None
+    LeanError = TimeoutError = ProofFinished = None
+    ProofGivenUp = Dojo = DojoInitError = None
 
 logger = logging.getLogger(__name__)
 

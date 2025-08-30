@@ -8,13 +8,23 @@ from dataclasses import dataclass
 from enum import Enum
 from pathlib import Path
 
-import torch
-from lean_dojo import (
-    Theorem, LeanGitRepo, Pos, TacticState, LeanError, TimeoutError,
-    ProofFinished, ProofGivenUp, Dojo, DojoInitError, DojoCrashError
-)
+try:
+    import torch
+except ImportError:
+    torch = None
+
+try:
+    from lean_dojo import (
+        Theorem, LeanGitRepo, Pos, TacticState, LeanError, TimeoutError,
+        ProofFinished, ProofGivenUp, Dojo, DojoInitError, DojoCrashError
+    )
+except ImportError:
+    # For environments without lean_dojo installed
+    Theorem = LeanGitRepo = Pos = TacticState = LeanError = TimeoutError = None
+    ProofFinished = ProofGivenUp = Dojo = DojoInitError = DojoCrashError = None
 
 from prover.proof_search import BestFirstSearchProver, SearchResult
+from prover.search_tree import Status
 from conjecture_generation import ConjectureEngine, ConjectoreProblem
 from search_algorithms import AdvancedSearchEngine, SearchStrategy
 

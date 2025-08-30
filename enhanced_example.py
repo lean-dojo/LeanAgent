@@ -7,13 +7,26 @@ from pathlib import Path
 # Add LeanAgent to path
 sys.path.append(str(Path(__file__).parent))
 
-from lean_dojo import LeanGitRepo, Theorem, Pos
+try:
+    from lean_dojo import LeanGitRepo, Theorem, Pos
+except ImportError:
+    LeanGitRepo = Theorem = Pos = None
+
 from loguru import logger
 
 # Import enhanced components
-from leanagent_enhanced import EnhancedLeanAgent, EnhancedLeanAgentConfig, ProverMode
-from generator.model import FixedTacticGenerator
+from leanagent_enhanced import EnhancedLeanAgent, EnhancedLeanAgentConfig
+from enhanced_theorem_prover import ProverMode
 from search_algorithms import SearchStrategy
+
+try:
+    from generator.model import FixedTacticGenerator
+except ImportError:
+    # Simple mock for demonstration
+    class FixedTacticGenerator:
+        def __init__(self, tactic, module):
+            self.tactic = tactic
+            self.module = module
 
 
 def main():

@@ -10,11 +10,19 @@ from dataclasses import dataclass, field
 from enum import Enum
 from abc import ABC, abstractmethod
 
-from lean_dojo import (
-    TacticState, LeanError, TimeoutError, ProofFinished, ProofGivenUp,
-    Theorem, LeanGitRepo, Pos
-)
-from prover.search_tree import Status, Node, InternalNode, SearchNode
+try:
+    from lean_dojo import (
+        TacticState, LeanError, TimeoutError, ProofFinished, ProofGivenUp,
+        Theorem, LeanGitRepo, Pos
+    )
+except ImportError:
+    # For environments without lean_dojo installed
+    TacticState = LeanError = TimeoutError = ProofFinished = ProofGivenUp = None
+    Theorem = LeanGitRepo = Pos = None
+
+# Note: Status is defined in prover.search_tree, not imported here
+# SearchNode doesn't exist in search_tree.py - we define our own
+from prover.search_tree import Node, InternalNode
 
 import logging
 logger = logging.getLogger(__name__)
