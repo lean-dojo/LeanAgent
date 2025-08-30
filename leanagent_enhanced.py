@@ -88,21 +88,27 @@ class EnhancedLeanAgent:
         self.raid_dir = raid_dir or os.environ.get('RAID_DIR', '/tmp')
         
         # Initialize base LeanAgent components
-        self.distributed_prover = DistributedProver(
-            use_vllm=False,
-            ckpt_path=None,
-            indexed_corpus_path=None,
-            tactic=None,
-            module=None,
-            num_workers=num_workers,
-            num_gpus=num_gpus,
-            timeout=self.config.timeout,
-            max_expansions=self.config.max_expansions,
-            num_sampled_tactics=self.config.num_sampled_tactics,
-            raid_dir=self.raid_dir,
-            checkpoint_dir="checkpoints",
-            debug=self.config.debug
-        )
+        # Note: DistributedProver needs either (tactic + module) or ckpt_path
+        # Since we have tac_gen, we'll use a simplified approach
+        if num_workers > 1 and DistributedProver:
+            self.distributed_prover = DistributedProver(
+                use_vllm=False,
+                ckpt_path=None,
+                indexed_corpus_path=None,
+                tactic="simp",  # Default tactic for now
+                module=None,
+                num_workers=num_workers,
+                num_gpus=num_gpus,
+                timeout=self.config.timeout,
+                max_expansions=self.config.max_expansions,
+                num_sampled_tactics=self.config.num_sampled_tactics,
+                raid_dir=self.raid_dir,
+                checkpoint_dir="checkpoints",
+                debug=self.config.debug
+            )
+        else:
+            # For single worker, just use the prover directly
+            self.distributed_prover = None
         
         # Initialize enhanced components
         if self.config.enable_enhanced_prover:
@@ -184,9 +190,22 @@ class EnhancedLeanAgent:
             
             # Fallback to base prover
             if not result or result.status != Status.PROVED:
-                logger.info("Using base distributed prover")
-                results = self.distributed_prover.search_unordered(repo, [theorem], [pos])
-                result = results[0] if results else None
+                if self.distributed_prover:
+                    logger.info("Using base distributed prover")
+                    results = self.distributed_prover.search_unordered(repo, [theorem], [pos])
+                    result = results[0] if results else None
+                else:
+                    logger.info("No distributed prover available, using tac_gen directly")
+                    # Fallback to creating a simple prover
+                    from prover.proof_search import BestFirstSearchProver
+                    simple_prover = BestFirstSearchProver(
+                        tac_gen=self.tac_gen,
+                        timeout=self.config.timeout,
+                        max_expansions=self.config.max_expansions,
+                        num_sampled_tactics=self.config.num_sampled_tactics,
+                        debug=self.config.debug
+                    )
+                    result = simple_prover.search(repo, theorem, pos)
             
             # Update statistics
             if result and result.status == Status.PROVED:

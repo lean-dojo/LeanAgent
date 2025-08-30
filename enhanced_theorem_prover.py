@@ -80,8 +80,8 @@ class EnhancedTheoremProver:
         )
         
         # Enhanced components
-        self.conjecture_engine = ConjectureEngine() if config.enable_conjecture_generation else None
-        self.advanced_search = AdvancedSearchEngine() if config.enable_advanced_search else None
+        self.conjecture_engine = ConjectureEngine() if self.config.enable_conjecture_generation else None
+        self.advanced_search = AdvancedSearchEngine() if self.config.enable_advanced_search else None
         
         # Statistics
         self.enhanced_attempts = 0
