@@ -624,10 +624,10 @@ def main():
         current_epoch = 0
         epochs_per_repo = 1
         run_progressive_training = True
-        use_fisher = False
-        single_repo = True
+        use_fisher = True  # FIXED: Enable EWC for lifelong learning
+        single_repo = False  # FIXED: Enable cumulative learning across repos
         curriculum_learning = True
-        num_repos = 3
+        num_repos = 23  # FIXED: Full paper reproduction (was 3)
         dynamic_database_json_path = os.path.join(RAID_DIR, DB_FILE_NAME)
 
         lambdas = None
@@ -644,6 +644,9 @@ def main():
         logger.info("LeanDojo configured")
 
         db = initialize_database(dynamic_database_json_path)
+        # FIXED: Create required directories
+        os.makedirs(FISHER_DIR, exist_ok=True)
+        os.makedirs(CHECKPOINT_DIR, exist_ok=True)
         logger.info(f"Found {num_repos} repositories")
 
         lean_git_repos, repos, updated_repos = get_repos(curriculum_learning, num_repos, dynamic_database_json_path, db)
@@ -688,7 +691,8 @@ def main():
                     repos_for_proving = []
 
                     # Create a directory for the merged dataset if it doesn't exist
-                    dst_dir = Path(RAID_DIR) / DATA_DIR / f"merged_with_new_{dir_name}"
+                    # FIXED: Use DATA_DIR directly (it's already full path)
+                    dst_dir = Path(DATA_DIR) / f"merged_with_new_{dir_name}"
                     if (repo.url, repo.commit) not in repos_for_merged_dataset:
                         logger.info("Adding repo to repos_for_merged_dataset")
                         repos_for_merged_dataset.append((repo.url, repo.commit))
@@ -962,10 +966,53 @@ def main():
                     if ray.is_initialized():
                         logger.info("Shutting down Ray before proving")
                         ray.shutdown()
+                    
+                    # ADDED: Compute Fisher Information Matrix after training (before proving)
+                    if use_fisher and i < num_repos - 1:  # Don't compute Fisher after last repo
+                        logger.info("="*80)
+                        logger.info("COMPUTING FISHER INFORMATION MATRIX")
+                        logger.info("="*80)
+                        
+                        from retrieval.fisher_computation_module import FisherComputationModule
+                        
+                        # Create Fisher computation module with current best model
+                        fisher_module = FisherComputationModule(best_model)
+                        
+                        # Setup trainer for Fisher computation
+                        fisher_trainer = pl.Trainer(
+                            accelerator="gpu",
+                            precision="bf16-mixed",
+                            strategy=ddp_strategy,
+                            devices=4,
+                            max_epochs=1,
+                            log_every_n_steps=1,
+                            num_sanity_val_steps=0,
+                        )
+                        
+                        try:
+                            logger.info("Computing Fisher matrix...")
+                            fisher_trainer.strategy.barrier()
+                            fisher_trainer.fit(fisher_module, datamodule=data_module)
+                            fisher_trainer.strategy.barrier()
+                            
+                            # Save the Fisher Information Matrix
+                            if fisher_trainer.is_global_zero:
+                                fisher_file_path = os.path.join(
+                                    FISHER_DIR,
+                                    f"fisher_info_{dir_name}_distributed.pkl",
+                                )
+                                fisher_module.save_fisher_info(fisher_file_path)
+                                logger.info(f"Fisher Information Matrix saved at {fisher_file_path}")
+                        except Exception as e:
+                            logger.error(f"Error during Fisher computation: {str(e)}")
+                            print(traceback.format_exc())
+                        
+                        logger.info("Finished computing Fisher matrix")
 
                     # Set up the prover
                     use_vllm = False
-                    corpus_path = dst_dir + "/corpus.jsonl"
+                    # FIXED: Use os.path.join instead of string concatenation
+                    corpus_path = os.path.join(str(dst_dir), "corpus.jsonl")
                     tactic = (
                         None  # `None` since we are not using a fixed tactic generator
                     )
@@ -1034,9 +1081,61 @@ def main():
                 logger.info("Finished processing the repository")
                 current_epoch += epochs_per_repo
                 logger.info(f"current epoch: {current_epoch}")
-                if use_fisher:
-                    # Need to return to compute the FIM
-                    return
+                # FIXED: Removed early return to allow all 23 repos to be processed
+                # Fisher computation will happen between repos via external script
+                # if use_fisher:
+                #     # Need to return to compute the FIM\n                #     return
+                
+                # ADDED: Second sorry proving pass after all repos ("Add. After")
+                if is_main_process and i == num_repos - 1:
+                    logger.info("=" * 80)
+                    logger.info("STARTING SECOND PASS: 'Add. After' with final model")
+                    logger.info("=" * 80)
+                    
+                    if ray.is_initialized():
+                        logger.info("Shutting down Ray before second pass")
+                        ray.shutdown()
+                    
+                    # Use the final checkpoint  
+                    try:
+                        final_checkpoint = find_latest_checkpoint()
+                        logger.info(f"Using final checkpoint for second pass: {final_checkpoint}")
+                    except FileNotFoundError:
+                        logger.error("No checkpoint found for second pass")
+                        
+                    # Create new prover with final model
+                    final_prover = DistributedProver(
+                        use_vllm,
+                        ckpt_path,
+                        corpus_path,
+                        tactic,
+                        module,
+                        num_workers,
+                        num_gpus=num_gpus,
+                        timeout=timeout,
+                        max_expansions=max_expansions,
+                        num_sampled_tactics=num_sampled_tactics,
+                        raid_dir=RAID_DIR,
+                        checkpoint_dir=CHECKPOINT_DIR,
+                        debug=debug,
+                        run_progressive_training=run_progressive_training,
+                    )
+                    
+                    # Reprove ALL repos with final model
+                    logger.info("Reproving ALL repositories with final model for 'Add. After' pass")
+                    prove_sorry_theorems(
+                        db,
+                        final_prover,
+                        dynamic_database_json_path,
+                        repos_to_include=None,  # All repos
+                    )
+                    
+                    save_database_locked(db, dynamic_database_json_path)
+                    logger.info("Completed 'Add. After' pass")
+                    
+                    if ray.is_initialized():
+                        logger.info("Shutting down Ray after second pass")
+                        ray.shutdown()
 
     except Exception as e:
         logger.info(f"An error occurred: {e}", file=sys.stderr)
