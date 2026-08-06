@@ -1,4 +1,5 @@
 import json
+import os
 import shutil
 import random
 import networkx as nx
@@ -15,6 +16,7 @@ from lean_dojo.constants import LEAN4_PACKAGES_DIR
 import re
 import subprocess
 import sys
+from lean_toolchain import activate_lean_toolchain
 
 random.seed(3407)  # https://arxiv.org/abs/2109.08203
 
@@ -23,6 +25,7 @@ SPLIT_NAME = str  # train/val/test
 SPLIT = Dict[SPLIT_NAME, List[TracedTheorem]]
 SPLIT_STRATEGY = str
 _LEAN4_VERSION_REGEX = re.compile(r"leanprover/lean4:(?P<version>.+?)")
+SUPPORTED_LEANDOJO_VERSION = "1.9.0"
 
 def get_lean4_version_from_config(toolchain: str) -> str:
     """Return the required Lean version given a ``lean-toolchain`` config."""
@@ -56,6 +59,20 @@ def is_supported_version(v) -> bool:
         return rc >= 2
     else:
         return True
+
+
+def validate_tracing_environment(version: str) -> Path:
+    """Validate the Lean/LeanDojo pair before compiling LeanDojo's tracer."""
+    installed_leandojo_version = getattr(lean_dojo, "__version__", "unknown")
+    if installed_leandojo_version != SUPPORTED_LEANDOJO_VERSION:
+        raise RuntimeError(
+            "LeanAgent requires lean_dojo=="
+            f"{SUPPORTED_LEANDOJO_VERSION} for its supported Lean toolchains; "
+            f"found {installed_leandojo_version}. Reinstall it with: "
+            f"python -m pip install --upgrade --force-reinstall "
+            f"lean_dojo=={SUPPORTED_LEANDOJO_VERSION}"
+        )
+    return activate_lean_toolchain(version)
 
 def _split_sequentially(
     traced_theorems: List[TracedTheorem],
@@ -510,24 +527,18 @@ def main(url, commit, dst_dir):
     logger.info(f"lean toolchain version: {config}")
     v = get_lean4_version_from_config(config["content"])
     logger.info(f"lean version v: {v}")
-    logger.info(f"is supported: {is_supported_version(v)}")
-    if not is_supported_version(v):  # Won't get here since we checked for a compatible commit, but sanity check in case
-        logger.info("Unsupported version")
-    v = v[1:] # ignore "v" at beginning
-    
-    lean_dir2 = f"/.elan/toolchains/leanprover--lean4---{v}"
-    lean_dir3 = f"~/.elan/toolchains/leanprover--lean4---{v}"
-    logger.info(f"lean path2 {lean_dir2}")
-    logger.info(f"lean path3 {lean_dir3}")
-    if not os.path.exists(lean_dir2):
-        logger.info(f"Lean toolchain path 2 does not exist: {lean_dir2}")
-    if not os.path.exists(lean_dir3):
-        logger.info(f"Lean toolchain path 3 does not exist: {lean_dir3}")
-    os.environ['LEAN4_PATH'] = lean_dir2
-    os.environ['PATH'] = f"{lean_dir2}/bin:{os.environ.get('PATH', '')}"
-    logger.info(f"Switched to Lean toolchain at: {lean_dir2}")
+    if not is_supported_version(v):
+        logger.error(f"Unsupported Lean version: {v}")
+        return None, 0, 0, 10
 
-    logger.info(f"lean --version: {subprocess.run(['lean', '--version'], capture_output=True).stdout.decode('utf-8')}")
+    try:
+        lean_binary = validate_tracing_environment(v)
+    except RuntimeError as exc:
+        logger.error(f"Cannot trace {repo}: {exc}")
+        return None, 0, 0, 10
+
+    logger.info(f"Switched to Lean toolchain at: {lean_binary.parent.parent}")
+    logger.info(f"lean --version: {subprocess.run([str(lean_binary), '--version'], capture_output=True, text=True).stdout.strip()}")
     logger.info(f"repo: {repo}")
 
     logger.info("Configuring LeanDojo again...")
