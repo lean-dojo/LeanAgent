@@ -50,9 +50,11 @@ rm -rf ${RAY_TMPDIR}
 mkdir "${RAY_TMPDIR}"
 echo "Stopping ray"
 ray stop --force
-echo "Killing all python processes to free up memory"
-ps aux | grep "python" | awk '{print $2}' | xargs -r kill -9
-sleep 5
-nvidia-smi
+echo "Skipping blanket kill of all Python processes (was: kill -9 every python PID)."
+echo "If you need to free GPU memory, stop LeanAgent/Ray workers explicitly."
+sleep 2
+if command -v nvidia-smi >/dev/null 2>&1; then
+  nvidia-smi
+fi
 echo "Running compute_fisher.py"
 python compute_fisher.py

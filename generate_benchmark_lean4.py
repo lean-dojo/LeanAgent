@@ -1,4 +1,5 @@
 import json
+import os
 import shutil
 import random
 import networkx as nx
@@ -11,10 +12,12 @@ from typing import Dict, List, Union
 import time
 import lean_dojo
 from lean_dojo import *
+from lean_dojo import constants
 from lean_dojo.constants import LEAN4_PACKAGES_DIR
 import re
 import subprocess
 import sys
+from lean_toolchain import activate_lean_toolchain
 
 random.seed(3407)  # https://arxiv.org/abs/2109.08203
 
@@ -23,6 +26,7 @@ SPLIT_NAME = str  # train/val/test
 SPLIT = Dict[SPLIT_NAME, List[TracedTheorem]]
 SPLIT_STRATEGY = str
 _LEAN4_VERSION_REGEX = re.compile(r"leanprover/lean4:(?P<version>.+?)")
+SUPPORTED_LEANDOJO_VERSION = "1.9.0"
 
 def get_lean4_version_from_config(toolchain: str) -> str:
     """Return the required Lean version given a ``lean-toolchain`` config."""
@@ -32,30 +36,66 @@ def get_lean4_version_from_config(toolchain: str) -> str:
 
 def is_supported_version(v) -> bool:
     """
-    Check if ``v`` is at least `v4.3.0-rc2` and at most `v4.8.0-rc1`.
-    Note: Lean versions are generally not backwards-compatible. Also, the Lean FRO
-    keeps bumping the default versions of repos to the latest version, which is
-    not necessarily the latest stable version. So, we need to be careful about
-    what we choose to support.
+    Check if ``v`` is at least `v4.3.0-rc2` and at most `v4.8.0`.
+
+    LeanAgent pins ``lean_dojo==1.9.0``, whose tracer is compatible with this
+    range. Lean versions are not generally backwards-compatible, and newer Lean
+    APIs break the tracer (see upstream issue #7).
     """
-    if not v.startswith("v"):
+    if not isinstance(v, str) or not v.startswith("v"):
         return False
-    v = v[1:]
-    major, minor, patch = [int(_) for _ in v.split("-")[0].split(".")]
-    if major < 4 or (major == 4 and minor < 3) or (major == 4 and minor > 8) or (major == 4 and minor == 8 and patch > 1):
+    version = v[1:]
+    core, _, suffix = version.partition("-")
+    parts = core.split(".")
+    if len(parts) != 3 or not all(p.isdigit() for p in parts):
         return False
-    if (
-        major > 4
-        or (major == 4 and minor > 3)
-        or (major == 4 and minor == 3 and patch > 0)
-    ):
-        return True
-    assert major == 4 and minor == 3 and patch == 0
-    if "4.3.0-rc" in v:
-        rc = int(v.split("-")[1][2:])
+    major, minor, patch = (int(p) for p in parts)
+
+    # Only Lean 4 is supported.
+    if major != 4:
+        return False
+
+    # Below v4.3.0
+    if minor < 3:
+        return False
+    # Above v4.8.0
+    if minor > 8:
+        return False
+    if minor == 8 and patch > 0:
+        return False
+
+    # v4.3.0 release candidates: only rc2+
+    if minor == 3 and patch == 0 and suffix.startswith("rc"):
+        try:
+            rc = int(suffix[2:])
+        except ValueError:
+            return False
         return rc >= 2
-    else:
+
+    # Reject unknown suffixes other than empty / rcN already handled.
+    if suffix and not suffix.startswith("rc"):
+        return False
+
+    # v4.3.0 (stable) and everything through v4.8.0 inclusive.
+    if minor == 3 and patch == 0 and not suffix:
         return True
+    if minor > 3 or (minor == 3 and patch > 0):
+        return True
+    return False
+
+
+def validate_tracing_environment(version: str) -> Path:
+    """Validate the Lean/LeanDojo pair before compiling LeanDojo's tracer."""
+    installed_leandojo_version = getattr(lean_dojo, "__version__", "unknown")
+    if installed_leandojo_version != SUPPORTED_LEANDOJO_VERSION:
+        raise RuntimeError(
+            "LeanAgent requires lean_dojo=="
+            f"{SUPPORTED_LEANDOJO_VERSION} for its supported Lean toolchains; "
+            f"found {installed_leandojo_version}. Reinstall it with: "
+            f"python -m pip install --upgrade --force-reinstall "
+            f"lean_dojo=={SUPPORTED_LEANDOJO_VERSION}"
+        )
+    return activate_lean_toolchain(version)
 
 def _split_sequentially(
     traced_theorems: List[TracedTheorem],
@@ -511,23 +551,20 @@ def main(url, commit, dst_dir):
     v = get_lean4_version_from_config(config["content"])
     logger.info(f"lean version v: {v}")
     logger.info(f"is supported: {is_supported_version(v)}")
-    if not is_supported_version(v):  # Won't get here since we checked for a compatible commit, but sanity check in case
-        logger.info("Unsupported version")
-    v = v[1:] # ignore "v" at beginning
-    
-    lean_dir2 = f"/.elan/toolchains/leanprover--lean4---{v}"
-    lean_dir3 = f"~/.elan/toolchains/leanprover--lean4---{v}"
-    logger.info(f"lean path2 {lean_dir2}")
-    logger.info(f"lean path3 {lean_dir3}")
-    if not os.path.exists(lean_dir2):
-        logger.info(f"Lean toolchain path 2 does not exist: {lean_dir2}")
-    if not os.path.exists(lean_dir3):
-        logger.info(f"Lean toolchain path 3 does not exist: {lean_dir3}")
-    os.environ['LEAN4_PATH'] = lean_dir2
-    os.environ['PATH'] = f"{lean_dir2}/bin:{os.environ.get('PATH', '')}"
-    logger.info(f"Switched to Lean toolchain at: {lean_dir2}")
+    if not is_supported_version(v):
+        logger.error(f"Unsupported Lean version: {v}")
+        return None, 0, 0, 10
 
-    logger.info(f"lean --version: {subprocess.run(['lean', '--version'], capture_output=True).stdout.decode('utf-8')}")
+    try:
+        lean_binary = validate_tracing_environment(v)
+    except RuntimeError as exc:
+        logger.error(f"Cannot trace {repo}: {exc}")
+        return None, 0, 0, 10
+
+    logger.info(f"Switched to Lean toolchain at: {lean_binary.parent.parent}")
+    logger.info(
+        f"lean --version: {subprocess.run([str(lean_binary), '--version'], capture_output=True, text=True).stdout.strip()}"
+    )
     logger.info(f"repo: {repo}")
 
     logger.info("Configuring LeanDojo again...")

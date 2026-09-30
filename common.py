@@ -464,7 +464,7 @@ def get_optimizers(
 
 def _is_deepspeed_checkpoint(path: str):
     if not os.path.exists(path):
-        raise FileExistsError(f"Checkpoint {path} does not exist.")
+        raise FileNotFoundError(f"Checkpoint {path} does not exist.")
     return os.path.isdir(path) and os.path.exists(os.path.join(path, "zero_to_fp32.py"))
 
 

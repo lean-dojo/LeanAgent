@@ -44,8 +44,10 @@ def main():
             best_model = PremiseRetriever.load(best_model_path, device, freeze=False, config=config)
         except FileNotFoundError as e:
             logger.error(f"No checkpoint found: {str(e)}")
-            logger.warning("Using the current model state.")
-            best_model = model
+            raise SystemExit(
+                "compute_fisher.py requires an existing premise-retriever checkpoint. "
+                "Train or download one before computing Fisher Information Matrices."
+            ) from e
 
         # Create Fisher computation module
         fisher_module = FisherComputationModule(best_model)

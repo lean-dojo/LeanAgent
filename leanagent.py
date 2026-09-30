@@ -15,7 +15,7 @@ import numpy as np
 from tqdm import tqdm
 from loguru import logger
 from lean_dojo import Theorem
-from typing import List, Tuple, Optional
+from typing import List, Tuple, Optional, Set, Union
 from lean_dojo import LeanGitRepo, Pos, is_available_in_cache
 from lean_dojo import Theorem as LeanDojoTheorem
 import json
@@ -49,6 +49,10 @@ from pytorch_lightning import seed_everything
 random.seed(3407)  # https://arxiv.org/abs/2109.08203
 BATCH_SIZE = 4
 RAID_DIR = os.environ.get('RAID_DIR')
+if not RAID_DIR:
+    raise EnvironmentError(
+        "RAID_DIR is not set. Export RAID_DIR to your data directory before importing leanagent."
+    )
 os.environ['RAY_TMPDIR'] = f"{RAID_DIR}/tmp"
 repo_dir = f"{RAID_DIR}/repos_new"
 
@@ -381,6 +385,8 @@ def create_pull_request(repo_full_name, title, body, head_branch):
 
 def get_compatible_commit(url):
     """Find the most recent commit with a Lean version that LeanAgent supports."""
+    import tempfile
+
     try:
         process = subprocess.Popen(["git", "ls-remote", url], stdout=subprocess.PIPE)
         stdout, stderr = process.communicate()
@@ -398,45 +404,47 @@ def get_compatible_commit(url):
             return latest_commit, v
 
         logger.info(f"Searching for compatible commit for {url}")
-        try:
-            subprocess.run(["git", "rev-parse", "--is-inside-work-tree"], 
-                        check=True, 
-                        stdout=subprocess.DEVNULL, 
-                        stderr=subprocess.DEVNULL)
-            logger.info("Already in a Git repository")
-        except subprocess.CalledProcessError:
-            logger.info("Not in a Git repository. Initializing one.")
-            subprocess.run(["git", "init"], check=True)
-        
-        process = subprocess.Popen(
-            ["git", "fetch", "--depth=1000000", url],  # Fetch commits
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE
-        )
-        logger.info(f"Fetching commits for {url}")
-        _, stderr = process.communicate()
-        if process.returncode != 0:
-            raise Exception(f"Git fetch command failed: {stderr.decode('utf-8')}")
-        logger.info(f"Fetched commits for {url}")
-        process = subprocess.Popen(
-            ["git", "log", "--format=%H", "FETCH_HEAD"],  # Get list of commits
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE
-        )
-        logger.info(f"Getting list of commits for {url}")
-        stdout, stderr = process.communicate()
-        if process.returncode != 0:
-            raise Exception(f"Git log command failed: {stderr.decode('utf-8')}")
-        commits = stdout.decode('utf-8').strip().split('\n')
-        logger.info(f"Found {len(commits)} commits for {url}")
-        for commit in commits:
-            new_url = url.replace('.git', '')
-            repo = LeanGitRepo(new_url, commit)
-            config = repo.get_config("lean-toolchain")
-            v = generate_benchmark_lean4.get_lean4_version_from_config(config["content"])
-            if generate_benchmark_lean4.is_supported_version(v):
-                logger.info(f"Found compatible commit {commit} for {url}")
-                return commit, v
+        # Fetch into an isolated temp repo so we never pollute the caller's CWD
+        # (the previous implementation ran `git init` / `git fetch` in-place).
+        with tempfile.TemporaryDirectory(prefix="leanagent-compat-") as tmpdir:
+            subprocess.run(["git", "init"], cwd=tmpdir, check=True, capture_output=True)
+            process = subprocess.Popen(
+                ["git", "fetch", "--depth=1000000", url],
+                cwd=tmpdir,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+            )
+            logger.info(f"Fetching commits for {url}")
+            _, stderr = process.communicate()
+            if process.returncode != 0:
+                raise Exception(f"Git fetch command failed: {stderr.decode('utf-8')}")
+            logger.info(f"Fetched commits for {url}")
+            process = subprocess.Popen(
+                ["git", "log", "--format=%H", "FETCH_HEAD"],
+                cwd=tmpdir,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+            )
+            logger.info(f"Getting list of commits for {url}")
+            stdout, stderr = process.communicate()
+            if process.returncode != 0:
+                raise Exception(f"Git log command failed: {stderr.decode('utf-8')}")
+            commits = stdout.decode('utf-8').strip().split('\n')
+            logger.info(f"Found {len(commits)} commits for {url}")
+            for commit in commits:
+                if not commit:
+                    continue
+                try:
+                    new_url = url.replace('.git', '')
+                    repo = LeanGitRepo(new_url, commit)
+                    config = repo.get_config("lean-toolchain")
+                    v = generate_benchmark_lean4.get_lean4_version_from_config(config["content"])
+                    if generate_benchmark_lean4.is_supported_version(v):
+                        logger.info(f"Found compatible commit {commit} for {url}")
+                        return commit, v
+                except Exception as commit_err:
+                    logger.debug(f"Skipping commit {commit}: {commit_err}")
+                    continue
 
         raise Exception("No compatible commit found")
 
@@ -478,7 +486,7 @@ def find_and_save_compatible_commits(repo_info_file, lean_git_repos):
 
 def search_github_repositories(language="Lean", num_repos=10):
     """Search for the given number of repositories on GitHub that have the given language."""
-    headers = {'Authorization': personal_access_token}
+    headers = {'Authorization': f'token {personal_access_token}'}
     query_params = {
         'q': f'language:{language}',
         'sort': 'stars',
@@ -674,7 +682,7 @@ def prove_sorry_theorems(db: DynamicDatabase, prover: DistributedProver, dynamic
 
     processed_theorems: Set[Tuple[str, str, Tuple[int, int], Tuple[int, int]]] = set()
     all_encountered_theorems: Set[Tuple[str, str, Tuple[int, int], Tuple[int, int]]] = set()
-    last_save_time = datetime.datetime.now()
+    last_save_time = datetime.now()
     save_interval = timedelta(minutes=30)
 
     # Load previously encountered theorems
@@ -726,7 +734,7 @@ def prove_sorry_theorems(db: DynamicDatabase, prover: DistributedProver, dynamic
                 theorem_batch = []
                 positions_batch = []
 
-            current_time = datetime.datetime.now()
+            current_time = datetime.now()
             if current_time - last_save_time >= save_interval:
                 save_progress(all_encountered_theorems)
                 last_save_time = current_time
@@ -792,7 +800,7 @@ def add_repo_to_database(dynamic_database_json_path, repo, db):
         "lean_version": v,
         "lean_dojo_version": lean_dojo.__version__,
         "metadata": {
-            "date_processed": datetime.datetime.now(),
+            "date_processed": datetime.now(),
         },
         "theorems_folder": theorems_folder,
         "premise_files_corpus": premise_files_corpus,
@@ -832,7 +840,7 @@ def replace_sorry_with_proof(proofs):
             end_line, end_col = end.line_nb - 1, end.column_nb - 1
             original_text = ''.join(lines[start_line:end_line + 1])
             new_text = original_text.replace('sorry', proof_text, 1)
-            lines[start_line:end_line + 1] = new_text
+            lines[start_line:end_line + 1] = [new_text]
             
             with open(file_path, 'w') as file:
                 file.writelines(lines)
