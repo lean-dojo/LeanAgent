@@ -46,12 +46,15 @@ bash replace_files.sh
     - `ENCOUNTERED_THEOREMS_FILE`: Path for tracking encountered theorems
     - (Optional) `FISHER_DIR`: Directory for Fisher Information Matrices (FIMs)
 2. Adjust the options at the beginning of the `main()` function according to your requirements. The default options correspond to the LeanAgent configuration, and alternate options can be used to replicate ablation studies from the paper.
-3. Adjust the Lean toolchain paths in `generate_benchmark_lean4.py` if needed:
+3. Install the Lean toolchain required by each traced repository. LeanAgent reads
+   `ELAN_HOME` (or `~/.elan` by default), activates that exact toolchain, and
+   verifies it before tracing. For example:
 ```
-lean_dir2 = f"/.elan/toolchains/leanprover--lean4---{v}"
-lean_dir3 = f"~/.elan/toolchains/leanprover--lean4---{v}"
+elan toolchain install leanprover/lean4:v4.8.0
 ```
-These should match your system's Lean installation paths.
+   LeanAgent requires `lean_dojo==1.9.0` (pinned in `requirements.txt`). Do not
+   rely on a newer default `lean` on `PATH` — that is the failure mode reported
+   in [issue #7](https://github.com/lean-dojo/LeanAgent/issues/7).
 
 ### Step 4: Install Models
 1. For ReProver's Tactic Generator:
@@ -111,7 +114,14 @@ To use EWC in the training process, alternate between running `run_leanagent.sh`
 
 ## Running Tests
 
-To run the unit test suite, first activate the conda environment and then use `pytest`:
+Lightweight unit tests (no GPU / Lean mathlib required):
+
+```bash
+python -m pip install pytest
+python -m pytest tests/test_smoke.py tests/test_lean_toolchain.py tests/test_escape_regex.py tests/test_common.py -q
+```
+
+To run the full suite (needs the LeanAgent conda env and dependencies):
 
 ```bash
 conda activate LeanAgent
@@ -132,7 +142,7 @@ LeanAgent is a lifelong learning framework for formal theorem proving that conti
 
 LeanAgent begins by searching for and processing Lean repositories from GitHub. The system maintains a list of known repositories to avoid duplicate processing and uses the GitHub API to identify repositories with Lean as their primary language.
 
-For each identified repository, LeanAgent checks compatibility by determining if the repository uses a supported Lean version. This is done by examining the repository's `lean-toolchain` configuration file. Currently, supported versions range from Lean `4.3.0-rc2` to Lean `4.8.0-rc1`. If compatible, the system clones the repository and extracts its commit SHA for version tracking.
+For each identified repository, LeanAgent checks compatibility by determining if the repository uses a supported Lean version. This is done by examining the repository's `lean-toolchain` configuration file. Currently, supported versions range from Lean `4.3.0-rc2` to Lean `4.8.0` (inclusive). If compatible, the system clones the repository and extracts its commit SHA for version tracking.
 
 To ensure compatibility with older repositories, LeanAgent can search through a repository's commit history to find the most recent commit that uses a supported Lean version. This allows the system to work with repositories that might have updated to newer, unsupported Lean versions.
 
